@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Desktop Agent</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div id="app-container">
+        <div id="sidebar">
+            <div id="sidebar-header">
+                <h2>Chats</h2>
+                <button id="new-chat-btn">+</button>
+            </div>
+            <div id="chat-list">
+                <!-- Chat list will be populated here -->
+            </div>
+            <div id="model-selector-container">
+                <label for="model-selector">Model:</label>
+                <select id="model-selector">
+                    <!-- Models will be populated here -->
+                </select>
+            </div>
+        </div>
+        <div id="main-content">
+            <div id="chat-window">
+                <!-- Messages will be displayed here -->
+            </div>
+            <div id="input-container">
+                <textarea id="message-input" placeholder="Type your message..."></textarea>
+                <button id="send-btn">Send</button>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.0.12/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/diff2html/bundles/js/diff2html.min.js"></script>
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
