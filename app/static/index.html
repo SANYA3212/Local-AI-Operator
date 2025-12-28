@@ -28,8 +28,13 @@
                 <!-- Messages will be displayed here -->
             </div>
             <div id="input-container">
-                <textarea id="message-input" placeholder="Type your message..."></textarea>
+                <textarea id="message-input" placeholder="Type your message or use the buttons below..."></textarea>
                 <button id="send-btn">Send</button>
+            </div>
+            <div id="action-buttons-container">
+                <button class="action-btn" data-action="write_file">Write File</button>
+                <button class="action-btn" data-action="shell_command">Run Command</button>
+                <button class="action-btn" data-action="take_screenshot">Take Screenshot</button>
             </div>
         </div>
     </div>

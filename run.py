@@ -10,10 +10,8 @@ Base.metadata.create_all(bind=engine)
 socketio = SocketIO(cors_allowed_origins="*")
 
 def create_app():
-    # Correctly configure Flask to serve static files from app/static
-    # The static_folder path is relative to the instance_path, so an absolute path is safer.
-    # However, for this project structure, a simple relative path works.
-    app = Flask(__name__, static_folder='static')
+    # Correctly configure Flask to find static files in the 'app/static' directory.
+    app = Flask(__name__, static_folder='app/static', static_url_path='/static')
 
     # Register the API blueprint with a URL prefix
     app.register_blueprint(api_blueprint, url_prefix='/api')
@@ -21,10 +19,10 @@ def create_app():
     # Import socket handlers to register them
     from app.api import sockets
 
-    # Serve the main index.html
+    # Serve the main index.html file from the static folder
     @app.route('/')
     def index():
-        return app.send_static_file('index.html')
+        return send_from_directory(app.static_folder, 'index.html')
 
     # Initialize the app with the SocketIO instance
     socketio.init_app(app)
@@ -32,4 +30,5 @@ def create_app():
 
 if __name__ == '__main__':
     app = create_app()
-    socketio.run(app, debug=True, port=5000, allow_unsafe_werkzeug=True)
+    # The user's log shows they are trying to run on port 8000, so I will update it.
+    socketio.run(app, debug=True, port=8000, allow_unsafe_werkzeug=True)
