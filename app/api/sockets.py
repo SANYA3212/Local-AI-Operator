@@ -3,20 +3,39 @@ from app.database.database import SessionLocal
 from app.database.models import Message
 from app.utils import ollama_stream_generate
 from app.agent.agent_core import AgentCore
+import sys
 
 active_agents = {}
 
+@socketio.on('connect')
+def handle_connect():
+    """Diagnostic handler to confirm connection."""
+    print("<<<<< CLIENT CONNECTED >>>>>", file=sys.stdout)
+    sys.stdout.flush()
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    """Diagnostic handler for disconnections."""
+    print(">>>>> CLIENT DISCONNECTED <<<<<", file=sys.stdout)
+    sys.stdout.flush()
+
 @socketio.on('user_message')
 def handle_user_message(data):
+    """Handles incoming user messages with detailed logging."""
+    print(f"\n--- SERVER RECEIVED user_message ---\nDATA: {data}\n------------------------------------", file=sys.stdout)
+    sys.stdout.flush()
+
     chat_id = data.get('chat_id')
     message_content = data.get('message')
     model = data.get('model')
-    image_data = data.get('image') # Receive image data
+    image_data = data.get('image')
 
-    if not chat_id or not message_content or not model:
+    if not all([chat_id, message_content, model]):
+        print("!!! Missing data in user_message, aborting.", file=sys.stdout)
+        sys.stdout.flush()
         return
 
-    # If an image is sent, the content is markdown. We save it as is.
+    # ... (rest of the logic)
     db = SessionLocal()
     user_message = Message(chat_id=chat_id, sender='user', content=message_content)
     db.add(user_message)
@@ -24,17 +43,12 @@ def handle_user_message(data):
     db.close()
 
     if message_content.strip().startswith("/task"):
-        task = message_content.replace("/task", "").strip()
-        if chat_id in active_agents:
-            active_agents[chat_id].stop()
-        agent_thread = AgentCore(task, model, chat_id, socketio)
-        active_agents[chat_id] = agent_thread
-        agent_thread.start()
+        # ... (agent logic)
     else:
+        # ... (streaming logic)
         full_response = ""
         message_id = f"agent-msg-{socketio.sid}-{Message().id}"
 
-        # Pass image_data to the generator
         generator = ollama_stream_generate(model=model, prompt=message_content, image_data=image_data)
 
         for part in generator:

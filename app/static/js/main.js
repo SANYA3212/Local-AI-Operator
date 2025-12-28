@@ -1,55 +1,12 @@
+// This will be a complete replacement for main.js to ensure no old code interferes.
+
 document.addEventListener('DOMContentLoaded', () => {
-    // ... (All previous code: socket, DOM elements, state, render functions, core logic, button listeners) ...
-
-    // =================================================================================
-    // STEP 2.5: IMAGE UPLOAD LOGIC
-    // =================================================================================
-
-    function setupImageUploadListeners() {
-        const dropZone = document.body; // Allow dropping anywhere
-
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            // Optional: add a visual indicator
-        });
-
-        dropZone.addEventListener('dragleave', (e) => {
-            // Optional: remove visual indicator
-        });
-
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            const file = e.dataTransfer.files[0];
-            if (file && file.type.startsWith('image/')) {
-                handleImageFile(file);
-            }
-        });
-
-        messageInput.addEventListener('paste', (e) => {
-            const file = e.clipboardData.files[0];
-            if (file && file.type.startsWith('image/')) {
-                e.preventDefault();
-                handleImageFile(file);
-            }
-        });
-    }
-
-    function handleImageFile(file) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            const base64Image = event.target.result;
-            // Ask for a prompt to go with the image
-            const prompt = messageInput.value.trim() || "Analyze this image.";
-            sendMessage(prompt, base64Image);
-        };
-        reader.readAsDataURL(file);
-    }
-
-    // =================================================================================
-    // FINALIZED JS - PASTING EVERYTHING TOGETHER
-    // =================================================================================
-
-    const socket = io();
+    // --- DIAGONSTIC STEP ---
+    // Explicitly connect to the server's Socket.IO endpoint.
+    // This is more robust than relying on the default.
+    const socket = io("http://127.0.0.1:8000", {
+        transports: ['websocket'] // Force WebSocket to avoid potential issues with polling
+    });
 
     // --- DOM Elements ---
     const chatListEl = document.getElementById('chat-list');
@@ -60,160 +17,104 @@ document.addEventListener('DOMContentLoaded', () => {
     const sendBtn = document.getElementById('send-btn');
     const newChatBtn = document.getElementById('new-chat-btn');
     const clearChatBtn = document.getElementById('clear-chat-btn');
-    const actionButtonsContainer = document.getElementById('action-buttons-container');
 
+    // --- State ---
     let currentChatId = null;
-    let tokenCount = 0;
-    let startTime = null;
 
-    // --- Render Functions ---
-    function renderChatList(chats) { /* ... */ }
-    function renderMessage(message) { /* ... */ }
+    // =================================================================================
+    // DIAGNOSTIC LOGGING
+    // =================================================================================
+    console.log("JavaScript loaded. Attempting to connect to WebSocket...");
 
-    // --- Core Logic ---
-    async function loadModels() { /* ... */ }
-    async function loadChats() { /* ... */ }
-    async function selectChat(chatId) { /* ... */ }
-    async function newChat() { /* ... */ }
-    function sendMessage(content, image = null) {
-        const message = content || messageInput.value.trim();
-        if (!message || !currentChatId) return;
+    socket.on('connect', () => {
+        console.log('%c<<<<< SOCKET CONNECTED >>>>>', 'color: #4CAF50; font-weight: bold;');
+        console.log('Socket ID:', socket.id);
+    });
 
-        renderMessage({ sender: 'user', content: image ? `![User Upload](${image}) \n\n ${message}`: message });
+    socket.on('disconnect', (reason) => {
+        console.log('%c>>>>> SOCKET DISCONNECTED <<<<<', 'color: #F44336; font-weight: bold;');
+        console.log('Reason:', reason);
+    });
 
-        socket.emit('user_message', {
+    socket.on('connect_error', (error) => {
+        console.error('%c!!!! SOCKET CONNECTION ERROR !!!!', 'color: #FFC107; font-weight: bold;', error);
+    });
+
+    // =================================================================================
+    // CORE LOGIC WITH LOGGING
+    // =================================================================================
+    function sendMessage() {
+        const message = messageInput.value.trim();
+        if (!message || !currentChatId) {
+            console.warn("SendMessage aborted: message or currentChatId is missing.");
+            return;
+        }
+
+        const payload = {
             chat_id: currentChatId,
             message: message,
-            model: modelSelector.value,
-            image: image
-        });
-        if (!image) messageInput.value = ''; // Clear input if no image was attached
+            model: modelSelector.value
+        };
+
+        console.log('%c--- CLIENT SENDING user_message ---', 'color: #2196F3; font-weight: bold;');
+        console.log('Payload:', payload);
+
+        // Render user message immediately
+        renderMessage({ sender: 'user', content: message });
+
+        socket.emit('user_message', payload);
+        messageInput.value = '';
     }
 
-    // --- Event Listeners ---
-    sendBtn.addEventListener('click', () => sendMessage());
-    messageInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
-    newChatBtn.addEventListener('click', newChat);
-    clearChatBtn.addEventListener('click', async () => { /* ... */ });
-    actionButtonsContainer.addEventListener('click', (e) => { /* ... */ });
-
-    // --- Socket.IO Handlers ---
-    socket.on('agent_token', (data) => { /* ... */ });
-    socket.on('stream_end', (data) => { /* ... */ });
-    socket.on('agent_message', (data) => { /* ... */ });
-
-    // --- Init ---
-    function init() {
-        loadModels();
-        loadChats();
-        setupImageUploadListeners();
-    }
-    init();
-
-    // Paste full implementation
-    function renderChatList(chats) {
-        chatListEl.innerHTML = '';
-        if (!chats || chats.length === 0) return;
-        chats.forEach(chat => {
-            const el = document.createElement('div');
-            el.className = `chat-list-item p-3 rounded-xl cursor-pointer border ${currentChatId === chat.id ? 'border-indigo-500/50 bg-indigo-900/30' : 'border-gray-700/50 hover:bg-gray-800/40'}`;
-            el.dataset.chatId = chat.id;
-            el.innerHTML = `<h3 class="font-medium truncate">Chat ${chat.id}</h3><p class="text-xs text-gray-400 truncate mt-1">${new Date(chat.created_at).toLocaleString()}</p>`;
-            el.addEventListener('click', () => selectChat(chat.id));
-            chatListEl.appendChild(el);
-        });
-    }
+    // --- The rest of the functions (render, load, etc.) ---
+    // For this diagnostic step, I will keep them minimal to isolate the problem.
+    // The full functionality will be restored after the connection issue is solved.
 
     function renderMessage(message) {
         const bubble = document.createElement('div');
         const isUser = message.sender === 'user';
-        bubble.className = `message-bubble max-w-[85%] rounded-2xl p-5 shadow-lg ${isUser ? 'user-bubble ml-auto' : 'ai-bubble'}`;
-        if (message.id) bubble.id = message.id;
-
-        const content = marked.parse(message.content);
-        bubble.innerHTML = `<div class="prose prose-invert max-w-none text-left">${content}</div>`;
-
+        bubble.className = `p-4 my-2 rounded-lg max-w-[85%] ${isUser ? 'bg-blue-600 ml-auto' : 'bg-gray-700'}`;
+        bubble.innerHTML = `<div class="prose prose-invert max-w-none">${marked.parse(message.content)}</div>`;
         chatWindow.appendChild(bubble);
         chatWindow.scrollTop = chatWindow.scrollHeight;
         bubble.querySelectorAll('pre code').forEach(hljs.highlightElement);
-        return bubble;
     }
 
-    async function loadModels() {
-        const response = await fetch('/api/models');
-        const models = await response.json();
-        modelSelector.innerHTML = models.map(m => `<option>${m}</option>`).join('');
-    }
+    async function initialize() {
+        console.log("Initializing chat...");
+        try {
+            const response = await fetch('/api/chats', { method: 'POST' });
+            if (!response.ok) throw new Error('Failed to create initial chat');
+            const chat = await response.json();
+            currentChatId = chat.id;
+            console.log("Initialization complete. Current chat ID:", currentChatId);
+            chatListEl.innerHTML = `<div class="p-3 text-sm text-green-400">Diagnostic Mode. Chat ID: ${currentChatId}</div>`;
 
-    async function loadChats() {
-        const response = await fetch('/api/chats');
-        const chats = await response.json();
-        renderChatList(chats);
-        if (chats.length > 0 && !currentChatId) {
-            selectChat(chats[0].id);
-        } else if (chats.length === 0) {
-            await newChat();
+            const modelsResponse = await fetch('/api/models');
+            if (!modelsResponse.ok) throw new Error('Failed to load models');
+            const models = await modelsResponse.json();
+            modelSelector.innerHTML = models.map(m => `<option>${m}</option>`).join('');
+        } catch (error) {
+            console.error("Initialization failed:", error);
+            chatListEl.innerHTML = `<div class="p-3 text-sm text-red-400">Initialization failed. Check console.</div>`;
         }
     }
 
-    async function selectChat(chatId) {
-        currentChatId = chatId;
-        chatWindow.innerHTML = '';
-        const response = await fetch(`/api/chats/${chatId}/messages`);
-        const messages = await response.json();
-        messages.forEach(renderMessage);
-        const chats = await (await fetch('/api/chats')).json();
-        renderChatList(chats);
-    }
+    sendBtn.addEventListener('click', sendMessage);
+    messageInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
 
-    async function newChat() {
-        const response = await fetch('/api/chats', { method: 'POST' });
-        const chat = await response.json();
-        await loadChats();
-        selectChat(chat.id);
-    }
+    // Dummy listeners for other buttons to prevent errors
+    newChatBtn.addEventListener('click', () => console.log("New Chat clicked"));
+    clearChatBtn.addEventListener('click', () => console.log("Clear Chat clicked"));
 
-    clearChatBtn.addEventListener('click', async () => {
-        if (!currentChatId || !confirm("Delete all messages in this chat?")) return;
-        await fetch(`/api/chats/${currentChatId}`, { method: 'DELETE' });
-        await newChat();
-    });
-
-    actionButtonsContainer.addEventListener('click', (e) => {
-        const action = e.target.closest('.action-btn')?.dataset.action;
-        if (!action) return;
-        let task = '';
-        if (action === 'write_file') task = `/task write file "${prompt('Path:')}" with content: "${prompt('Content:')}"`;
-        if (action === 'shell_command') task = `/task run command: ${prompt('Command:')}`;
-        if (action === 'take_screenshot') task = `/task screenshot to "${prompt('Filename:', 'screenshot.png')}"`;
-        if (task.includes('null')) return;
-        sendMessage(task);
-    });
-
+    // Simplified receiver for now
     socket.on('agent_token', (data) => {
-        if (data.chat_id !== currentChatId) return;
-        if (startTime === null) startTime = Date.now();
-        tokenCount++;
-        const tps = (tokenCount / ((Date.now() - startTime) / 1000)).toFixed(1);
-        tpsCounter.textContent = tps;
         let bubble = document.getElementById(data.message_id);
-        if (!bubble) bubble = renderMessage({ sender: 'agent', content: '', id: data.message_id });
-        const proseDiv = bubble.querySelector('.prose');
-        proseDiv.textContent += data.token;
-    });
-
-    socket.on('stream_end', (data) => {
-        tokenCount = 0;
-        startTime = null;
-        const bubble = document.getElementById(data.message_id);
-        if(bubble) {
-            const proseDiv = bubble.querySelector('.prose');
-            proseDiv.innerHTML = marked.parse(proseDiv.textContent);
-            bubble.querySelectorAll('pre code').forEach(hljs.highlightElement);
+        if (!bubble) {
+            bubble = renderMessage({ sender: 'agent', content: '', id: data.message_id });
         }
+        bubble.querySelector('.prose').textContent += data.token;
     });
 
-    socket.on('agent_message', (data) => {
-        if (data.chat_id === currentChatId) renderMessage({ sender: 'agent', content: data.message, id: data.message_id });
-    });
+    initialize();
 });
