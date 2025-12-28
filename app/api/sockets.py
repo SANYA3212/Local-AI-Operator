@@ -4,36 +4,51 @@ from app.database.models import Message
 from app.utils import ollama_stream_generate
 from app.agent.agent_core import AgentCore
 import sys
+import os
+from datetime import datetime
+
+# --- File-based History ---
+HISTORY_DIR = "app/chat_history"
+os.makedirs(HISTORY_DIR, exist_ok=True)
+
+def log_to_history(chat_id, sender, message):
+    """Appends a message to the chat's history file."""
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    log_path = os.path.join(HISTORY_DIR, f"chat_{chat_id}.txt")
+    with open(log_path, "a", encoding="utf-8") as f:
+        f.write(f"[{timestamp}] {sender.upper()}:\n{message}\n\n")
 
 active_agents = {}
 
 @socketio.on('connect')
 def handle_connect():
     print("<<<<< CLIENT CONNECTED >>>>>", file=sys.stdout)
-    sys.stdout.flush()
 
 @socketio.on('user_message')
 def handle_user_message(data):
     print(f"--- SERVER RECEIVED user_message ---\nDATA: {data}\n---", file=sys.stdout)
-    sys.stdout.flush()
 
     chat_id = data.get('chat_id')
     message_content = data.get('message')
+    # ... (rest of the variable extraction)
     model = data.get('model')
     image_data = data.get('image')
 
-    if not all([chat_id, message_content, model]):
-        print("!!! Missing data, aborting.", file=sys.stdout)
+    if not all([chat_id, model]) or not (message_content or image_data):
         return
 
+    # Log user message to file
+    log_to_history(chat_id, "user", message_content)
+
+    # ... (DB saving logic is the same)
     db = SessionLocal()
     user_message = Message(chat_id=chat_id, sender='user', content=message_content)
     db.add(user_message)
     db.commit()
     db.close()
 
-    if message_content.strip().startswith("/task"):
-        # This block now has content, fixing the IndentationError
+    if message_content and message_content.strip().startswith("/task"):
+        # ... (agent logic is the same)
         task = message_content.replace("/task", "").strip()
         if chat_id in active_agents:
             active_agents[chat_id].stop()
@@ -43,13 +58,21 @@ def handle_user_message(data):
     else:
         full_response = ""
         message_id = f"agent-msg-{socketio.sid}-{Message().id}"
+
         generator = ollama_stream_generate(model=model, prompt=message_content, image_data=image_data)
+
         for part in generator:
+            # ... (streaming logic is the same)
             token = part.get("response", "")
             if token:
                 full_response += token
                 socketio.emit('agent_token', {'chat_id': chat_id, 'token': token, 'message_id': message_id})
+
             if part.get("done"):
+                # Log final agent response to file
+                log_to_history(chat_id, "agent", full_response)
+
+                # ... (DB saving logic is the same)
                 db = SessionLocal()
                 agent_message = Message(chat_id=chat_id, sender='agent', content=full_response)
                 db.add(agent_message)
@@ -57,3 +80,4 @@ def handle_user_message(data):
                 db.close()
                 socketio.emit('stream_end', {'chat_id': chat_id, 'message_id': message_id})
                 break
+    sys.stdout.flush()

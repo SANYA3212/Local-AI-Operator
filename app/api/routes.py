@@ -4,8 +4,6 @@ from app.database.models import Chat, Message
 import requests
 from app.config import OLLAMA_BASE_URL
 
-# The blueprint is registered with the '/api' prefix in run.py,
-# so routes here should be relative to that.
 api = Blueprint('api', __name__)
 
 @api.route('/chats', methods=['GET'])
@@ -35,12 +33,15 @@ def get_messages(chat_id):
 @api.route('/chats/<int:chat_id>', methods=['DELETE'])
 def delete_chat(chat_id):
     db = SessionLocal()
-    chat = db.query(Chat).filter(Chat.id == chat_id).first()
-    if chat:
-        db.delete(chat)
+    chat_to_delete = db.query(Chat).filter(Chat.id == chat_id).first()
+    if chat_to_delete:
+        db.delete(chat_to_delete) # This will also delete associated messages due to cascading
         db.commit()
+        status = 'success'
+    else:
+        status = 'not found'
     db.close()
-    return jsonify({'status': 'success'})
+    return jsonify({'status': status})
 
 @api.route('/models', methods=['GET'])
 def get_models():
