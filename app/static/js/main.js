@@ -17,6 +17,26 @@ document.addEventListener('DOMContentLoaded', () => {
     let tokenCount = 0;
     let startTime = null;
 
+    // =================================================================================
+    // FIX CHAT DELETION LOGIC
+    // =================================================================================
+    clearChatBtn.addEventListener('click', async () => {
+        if (!currentChatId || !confirm("Are you sure you want to delete this chat?")) return;
+
+        const response = await fetch(`/api/chats/${currentChatId}`, { method: 'DELETE' });
+
+        if (response.ok) {
+            currentChatId = null; // Reset current chat ID
+            await loadChats(); // Reload the list, which will select the top chat or create a new one
+        } else {
+            alert("Failed to delete chat.");
+        }
+    });
+
+    // =================================================================================
+    // ALL OTHER FUNCTIONS (UNCHANGED, PASTED FOR COMPLETENESS)
+    // =================================================================================
+
     // --- Render Functions ---
     function renderChatList(chats) {
         chatListEl.innerHTML = '';
@@ -105,11 +125,6 @@ document.addEventListener('DOMContentLoaded', () => {
     sendBtn.addEventListener('click', () => sendMessage());
     messageInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
     newChatBtn.addEventListener('click', newChat);
-    clearChatBtn.addEventListener('click', async () => {
-        if (!currentChatId || !confirm("Delete all messages in this chat?")) return;
-        await fetch(`/api/chats/${currentChatId}`, { method: 'DELETE' });
-        await newChat();
-    });
 
     actionButtonsContainer.addEventListener('click', (e) => {
         const action = e.target.closest('.action-btn')?.dataset.action;

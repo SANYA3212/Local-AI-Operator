@@ -1,4 +1,4 @@
-from run import socketio
+from app.extensions import socketio # Import from the new central location
 from app.database.database import SessionLocal
 from app.database.models import Message
 from app.utils import ollama_stream_generate
@@ -7,6 +7,7 @@ import sys
 import os
 from datetime import datetime
 
+# ... (rest of the file remains the same, only the import is changed)
 HISTORY_DIR = "app/chat_history"
 os.makedirs(HISTORY_DIR, exist_ok=True)
 
@@ -28,7 +29,6 @@ def handle_user_message(data):
     model = data.get('model')
     image_data = data.get('image')
 
-    # Simplified, robust check
     if not chat_id or not model:
         print(f"!!! Aborting: Missing chat_id or model. Data: {data}", file=sys.stdout)
         return
@@ -40,7 +40,6 @@ def handle_user_message(data):
     db.commit()
     db.close()
 
-    # --- Main Logic Branch ---
     if message_content.strip().startswith("/task"):
         print(f"--- DETECTED TASK ---", file=sys.stdout)
         task = message_content.replace("/task", "").strip()
