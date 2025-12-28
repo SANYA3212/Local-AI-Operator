@@ -9,20 +9,12 @@ active_agents = {}
 
 @socketio.on('connect')
 def handle_connect():
-    """Diagnostic handler to confirm connection."""
     print("<<<<< CLIENT CONNECTED >>>>>", file=sys.stdout)
-    sys.stdout.flush()
-
-@socketio.on('disconnect')
-def handle_disconnect():
-    """Diagnostic handler for disconnections."""
-    print(">>>>> CLIENT DISCONNECTED <<<<<", file=sys.stdout)
     sys.stdout.flush()
 
 @socketio.on('user_message')
 def handle_user_message(data):
-    """Handles incoming user messages with detailed logging."""
-    print(f"\n--- SERVER RECEIVED user_message ---\nDATA: {data}\n------------------------------------", file=sys.stdout)
+    print(f"--- SERVER RECEIVED user_message ---\nDATA: {data}\n---", file=sys.stdout)
     sys.stdout.flush()
 
     chat_id = data.get('chat_id')
@@ -31,11 +23,9 @@ def handle_user_message(data):
     image_data = data.get('image')
 
     if not all([chat_id, message_content, model]):
-        print("!!! Missing data in user_message, aborting.", file=sys.stdout)
-        sys.stdout.flush()
+        print("!!! Missing data, aborting.", file=sys.stdout)
         return
 
-    # ... (rest of the logic)
     db = SessionLocal()
     user_message = Message(chat_id=chat_id, sender='user', content=message_content)
     db.add(user_message)
@@ -43,20 +33,22 @@ def handle_user_message(data):
     db.close()
 
     if message_content.strip().startswith("/task"):
-        # ... (agent logic)
+        # This block now has content, fixing the IndentationError
+        task = message_content.replace("/task", "").strip()
+        if chat_id in active_agents:
+            active_agents[chat_id].stop()
+        agent_thread = AgentCore(task, model, chat_id, socketio)
+        active_agents[chat_id] = agent_thread
+        agent_thread.start()
     else:
-        # ... (streaming logic)
         full_response = ""
         message_id = f"agent-msg-{socketio.sid}-{Message().id}"
-
         generator = ollama_stream_generate(model=model, prompt=message_content, image_data=image_data)
-
         for part in generator:
             token = part.get("response", "")
             if token:
                 full_response += token
                 socketio.emit('agent_token', {'chat_id': chat_id, 'token': token, 'message_id': message_id})
-
             if part.get("done"):
                 db = SessionLocal()
                 agent_message = Message(chat_id=chat_id, sender='agent', content=full_response)
