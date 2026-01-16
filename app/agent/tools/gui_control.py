@@ -29,8 +29,11 @@ if IS_WINDOWS:
             return self._safe_execute(pyautogui.typewrite, text, interval=0.05)
 
     class HotkeyTool(BaseTool):
-        """Presses a combination of hotkeys (e.g., 'ctrl', 'c')."""
-        def execute(self, *keys):
+        """
+        Presses a combination of hotkeys.
+        Example: `hotkey(keys=['ctrl', 'c'])` to press Ctrl+C.
+        """
+        def execute(self, keys: list):
             return self._safe_execute(pyautogui.hotkey, *keys)
 else:
     class MouseClickTool(_UnavailableTool):

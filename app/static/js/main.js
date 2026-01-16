@@ -269,10 +269,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
             case 'agent':
                 renderMessage({ sender: 'agent', content: data.message, id: data.message_id }, false);
-                if (data.message.includes('--- Starting Step')) {
+                if (data.message.includes('--- Выполнение шага')) {
                     updateActiveStep(data.message);
                 }
-                if (data.message.includes('Task finished') || data.message.includes('Task aborted') || data.message.includes('stopped by user')) {
+                if (data.message.includes('Задача завершена') || data.message.includes('Задача прервана') || data.message.includes('остановлено пользователем')) {
                     setAgentStatus(false);
                 }
                 break;

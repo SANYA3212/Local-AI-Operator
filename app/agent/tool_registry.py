@@ -24,6 +24,7 @@ TOOL_REGISTRY = {
     "python_interpreter": PythonInterpreterTool(),
 
     # Shell Command
+    "get_os_info": GetOSInfoTool(),
     "shell_command": ShellCommandTool(),
 
     # GUI Control (Windows-specific)
