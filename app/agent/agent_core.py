@@ -19,9 +19,14 @@ class AgentCore(threading.Thread):
         self.chat_id = chat_id
         self.socketio = socketio_instance
         self.stop_event = threading.Event()
+        self.plan_confirmed_event = threading.Event()
 
         from .tool_registry import TOOL_REGISTRY
         self.tools = TOOL_REGISTRY
+
+    def confirm_plan(self):
+        """Sets the event to confirm the plan and start execution."""
+        self.plan_confirmed_event.set()
 
     def run(self):
         self.log_and_emit("agent", f"Получена задача: \"{self.task}\". Начинаю анализ...")
@@ -61,8 +66,20 @@ class AgentCore(threading.Thread):
         plan_str = "\n".join([f"{i+1}. {step}" for i, step in enumerate(plan)])
         self.log_and_emit("plan", f"**Сгенерированный план:**\n{plan_str}")
 
-        if self.stop_event.is_set(): return
+        # --- Wait for user confirmation ---
+        self.log_and_emit("agent", "Ожидание подтверждения плана...")
+        # Wait for the plan to be confirmed, with a timeout of 5 minutes.
+        confirmed = self.plan_confirmed_event.wait(timeout=300)
 
+        if self.stop_event.is_set():
+            self.log_and_emit("agent", "Выполнение остановлено во время ожидания подтверждения.")
+            return
+
+        if not confirmed:
+            self.log_and_emit("agent", "План не был подтвержден в течение 5 минут. Задача прервана.")
+            return
+
+        self.log_and_emit("agent", "План подтвержден. Начинаю выполнение...")
         # Step 3: Executor executes the plan
         executor = Executor(self.model, self.tools, self.socketio, self.chat_id)
         for i, step in enumerate(plan):

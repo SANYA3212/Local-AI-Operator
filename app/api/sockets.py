@@ -46,6 +46,15 @@ def handle_start_task(data):
 
     sys.stdout.flush()
 
+@socketio.on('confirm_plan')
+def handle_confirm_plan(data):
+    """Handles the user's confirmation to execute a plan."""
+    chat_id = data.get('chat_id')
+    if chat_id in active_agents:
+        print(f"--- PLAN CONFIRMED BY USER (CHAT_ID: {chat_id}) ---", file=sys.stdout)
+        active_agents[chat_id].confirm_plan()
+    sys.stdout.flush()
+
 @socketio.on('stop_agent')
 def handle_stop_agent(data):
     """Stops an active agent task for a given chat."""

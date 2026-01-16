@@ -28,8 +28,9 @@ class BaseTool:
                 "message": str(e)
             })
 
-    def get_description(self):
+    @property
+    def description(self):
         """
-        Returns a description of the tool for the LLM.
+        Returns a description of the tool from its docstring.
         """
         return self.__doc__ or self.__class__.__name__

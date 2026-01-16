@@ -182,6 +182,31 @@ document.addEventListener('DOMContentLoaded', () => {
             li.dataset.stepIndex = index;
             planList.appendChild(li);
         });
+
+        // Add confirmation buttons
+        const buttonContainer = document.createElement('div');
+        buttonContainer.className = 'flex justify-end space-x-2 mt-4';
+
+        const confirmBtn = document.createElement('button');
+        confirmBtn.textContent = 'Confirm';
+        confirmBtn.className = 'px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg';
+        confirmBtn.onclick = () => {
+            socket.emit('confirm_plan', { chat_id: currentChatId });
+            buttonContainer.remove(); // Remove buttons after click
+        };
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.className = 'px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg';
+        cancelBtn.onclick = () => {
+            stopAgent(); // Use the existing stop function
+            buttonContainer.remove();
+        };
+
+        buttonContainer.appendChild(cancelBtn);
+        buttonContainer.appendChild(confirmBtn);
+        planList.appendChild(buttonContainer);
+
         planContainer.classList.remove('hidden');
     }
 

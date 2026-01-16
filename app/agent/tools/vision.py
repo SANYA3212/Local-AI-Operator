@@ -11,11 +11,13 @@ except (ImportError, KeyError, OSError):
 
 class _UnavailableTool(BaseTool):
     """A placeholder for a tool that is not available in the current environment."""
-    description = "This tool is not available in the current environment."
+    _description = "This tool is not available in the current environment."
+    @property
+    def description(self):
+        return self._description
+
     def execute(self, *args, **kwargs):
-        return self._safe_execute(lambda: (_ for _ in ()).throw(Exception(self.description)))
-    def get_description(self):
-        return self.description
+        return self._safe_execute(lambda: (_ for _ in ()).throw(Exception(self._description)))
 
 if GUI_AVAILABLE:
     class ScreenshotTool(BaseTool):
