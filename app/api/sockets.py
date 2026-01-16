@@ -57,17 +57,57 @@ def handle_stop_agent(data):
 
 @socketio.on('user_message')
 def handle_user_message(data):
-    """Handles a regular user message (not a task)."""
+    """
+    Handles a regular user message by streaming a response from the LLM.
+    """
     chat_id = data.get('chat_id')
     message_content = data.get('message', '')
+    model = data.get('model')
 
-    if not chat_id or not message_content:
+    if not all([chat_id, message_content, model]):
         return
 
+    # Save user message to DB
     db = SessionLocal()
     db.add(Message(chat_id=chat_id, sender='user', content=message_content))
     db.commit()
     db.close()
 
-    print(f"Received non-task message for chat {chat_id}: {message_content}", file=sys.stdout)
-    sys.stdout.flush()
+    print(f"--- DIALOGUE RECEIVED (CHAT_ID: {chat_id}) ---", file=sys.stdout)
+
+    full_response = ""
+    message_id = f"agent-msg-{request.sid}-{hash(message_content)}"
+
+    try:
+        generator = ollama_stream_generate(model=model, prompt=message_content)
+        for part in generator:
+            token = part.get("response", "")
+            if token:
+                full_response += token
+                socketio.emit('agent_response', {
+                    'chat_id': chat_id,
+                    'sender': 'token',
+                    'message': token,
+                    'message_id': message_id
+                })
+
+            if part.get("done"):
+                break
+    except Exception as e:
+        print(f"Error during dialogue generation: {e}", file=sys.stdout)
+        full_response = f"Sorry, an error occurred: {e}"
+        socketio.emit('agent_response', {
+            'chat_id': chat_id,
+            'sender': 'agent',
+            'message': full_response,
+            'message_id': message_id
+        })
+    finally:
+        # Save the final full response to the database
+        db = SessionLocal()
+        db.add(Message(chat_id=chat_id, sender='agent', content=full_response))
+        db.commit()
+        db.close()
+        # Signal the end of the stream
+        socketio.emit('stream_end', {'chat_id': chat_id, 'message_id': message_id})
+        sys.stdout.flush()

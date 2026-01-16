@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const planContainer = document.getElementById('plan-container');
     const planList = document.getElementById('plan-list');
     const stopAgentBtn = document.getElementById('stop-agent-btn');
+    const operatorModeToggle = document.getElementById('operator-mode-toggle');
 
     // --- State ---
     let currentChatId = null;
@@ -82,11 +83,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         renderMessage({ sender: 'user', content: message });
 
-        if (message.toLowerCase().startsWith('/task')) {
+        const isOperatorMode = operatorModeToggle.checked;
+
+        if (isOperatorMode) {
             setAgentStatus(true);
             socket.emit('start_task', {
                 chat_id: currentChatId,
-                task: message.substring(5).trim(),
+                task: message,
                 model: modelSelector.value
             });
         } else {
@@ -206,11 +209,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (data.chat_id !== currentChatId) return;
 
         switch (data.sender) {
+            case 'token':
+                appendToken(data.message_id, data.message);
+                break;
             case 'plan':
                 displayPlan(data.message);
                 break;
             case 'agent':
-                renderMessage({ sender: 'agent', content: data.message });
+                renderMessage({ sender: 'agent', content: data.message, id: data.message_id });
                 if (data.message.includes('--- Starting Step')) {
                     updateActiveStep(data.message);
                 }
@@ -227,6 +233,11 @@ document.addEventListener('DOMContentLoaded', () => {
             default:
                 renderMessage({ sender: 'agent', content: data.message });
         }
+    });
+
+    socket.on('stream_end', (data) => {
+        if (data.chat_id !== currentChatId) return;
+        finalizeMessage(data.message_id);
     });
 
     // =================================================================================
