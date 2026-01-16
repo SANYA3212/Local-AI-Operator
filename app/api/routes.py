@@ -46,9 +46,12 @@ def delete_chat(chat_id):
 @api.route('/models', methods=['GET'])
 def get_models():
     try:
-        response = requests.get(f"{OLLAMA_BASE_URL}/api/tags")
+        # Set a timeout to prevent long waits if Ollama is unresponsive
+        response = requests.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=5)
         response.raise_for_status()
         models = [model['name'] for model in response.json().get('models', [])]
         return jsonify(models)
-    except requests.exceptions.RequestException as e:
-        return jsonify({"error": str(e)}), 500
+    except requests.exceptions.RequestException:
+        # If Ollama is not available, return an empty list.
+        # The frontend will handle this gracefully.
+        return jsonify([])

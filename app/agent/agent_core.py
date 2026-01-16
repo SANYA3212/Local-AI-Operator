@@ -1,14 +1,15 @@
 # app/agent/agent_core.py
 import threading
 import sys
-from app.agent.planner import Planner
-from app.agent.executor import Executor
-from app.agent.tools.file_system import WriteFileTool, ReadFileTool, ListFilesTool
-from app.agent.tools.shell import ShellCommandTool
-from app.agent.tools.gui_control import MouseClickTool, TypeTextTool, HotkeyTool
-from app.agent.tools.windows_control import GetActiveWindowTool, MaximizeWindowTool
-from app.agent.tools.vision import ScreenshotTool
-from app.agent.tools.python_interpreter import PythonInterpreterTool
+from .master_thinker import MasterThinker
+from .planner import Planner
+from .executor import Executor
+from .tools.file_system import WriteFileTool, ReadFileTool, ListFilesTool
+from .tools.shell import ShellCommandTool
+from .tools.gui_control import MouseClickTool, TypeTextTool, HotkeyTool
+from .tools.windows_control import GetActiveWindowTool, MaximizeWindowTool
+from .tools.vision import ScreenshotTool
+from .tools.python_interpreter import PythonInterpreterTool
 
 class AgentCore(threading.Thread):
     def __init__(self, task, model, chat_id, socketio_instance):
@@ -19,58 +20,65 @@ class AgentCore(threading.Thread):
         self.socketio = socketio_instance
         self.stop_event = threading.Event()
 
-        self.tools = {
-            "write_file": WriteFileTool(),
-            "read_file": ReadFileTool(),
-            "list_files": ListFilesTool(),
-            "shell_command": ShellCommandTool(),
-            "mouse_click": MouseClickTool(),
-            "type_text": TypeTextTool(),
-            "hotkey": HotkeyTool(),
-            "get_active_window": GetActiveWindowTool(),
-            "maximize_window": MaximizeWindowTool(),
-            "take_screenshot": ScreenshotTool(),
-            "python_interpreter": PythonInterpreterTool(),
-        }
+        from .tool_registry import TOOL_REGISTRY
+        self.tools = TOOL_REGISTRY
 
     def run(self):
-        self.log_and_emit("agent", f"Task received: \"{self.task}\". Starting planning process...")
+        self.log_and_emit("agent", f"Получена задача: \"{self.task}\". Начинаю анализ...")
+        if self.stop_event.is_set(): return
+
+        # Step 1: Master Thinker analyzes the task
+        master_thinker = MasterThinker(self.model)
+        initial_decision = master_thinker.analyze_task(self.task)
+        decision = initial_decision.get("decision")
 
         if self.stop_event.is_set(): return
 
+        if decision == "dialogue":
+            self.log_and_emit("agent", initial_decision.get("response", "Я не уверен, как на это ответить."))
+            self.log_and_emit("agent", "Задача выполнена (это был диалог).")
+            return
+
+        if decision == "planning":
+            self.log_and_emit("thought", initial_decision.get("thought", "Требуется планирование."))
+            self.execute_plan()
+        else:
+            self.log_and_emit("agent", "Не удалось принять решение. Задача прервана.")
+
+        sys.stdout.flush()
+
+    def execute_plan(self):
+        # Step 2: Planner creates a plan
         planner = Planner(self.model)
         plan = planner.generate_plan(self.task, list(self.tools.keys()))
 
-        if plan and not plan[0].startswith("Error:"):
-            plan_str = "\n".join([f"{i+1}. {step}" for i, step in enumerate(plan)])
-            self.log_and_emit("plan", f"**Generated Plan:**\n{plan_str}")
-        else:
-            error_message = plan[0] if plan else "Failed to generate a plan."
-            self.log_and_emit("agent", f"Error during planning: {error_message}")
-            self.log_and_emit("agent", "Task aborted due to planning failure.")
+        if not (plan and not plan[0].startswith("Error:")):
+            error_message = plan[0] if plan else "Не удалось сгенерировать план."
+            self.log_and_emit("agent", f"Ошибка во время планирования: {error_message}")
+            self.log_and_emit("agent", "Задача прервана из-за сбоя планирования.")
             return
+
+        plan_str = "\n".join([f"{i+1}. {step}" for i, step in enumerate(plan)])
+        self.log_and_emit("plan", f"**Сгенерированный план:**\n{plan_str}")
 
         if self.stop_event.is_set(): return
 
+        # Step 3: Executor executes the plan
         executor = Executor(self.model, self.tools, self.socketio, self.chat_id)
-
         for i, step in enumerate(plan):
             if self.stop_event.is_set():
-                self.log_and_emit("agent", "Task execution stopped by user.")
+                self.log_and_emit("agent", "Выполнение задачи остановлено пользователем.")
                 break
 
-            self.log_and_emit("agent", f"--- Starting Step {i+1}/{len(plan)} ---")
+            self.log_and_emit("agent", f"--- Выполнение шага {i+1}/{len(plan)} ---")
             executor.execute_step(step, self.task)
             executor.history = []
 
         if not self.stop_event.is_set():
-            self.log_and_emit("agent", "All steps executed. Task finished.")
-
-        sys.stdout.flush()
+            self.log_and_emit("agent", "Все шаги выполнены. Задача завершена.")
 
     def log_and_emit(self, sender, content):
         print(f"[{sender.upper()}] CHAT_ID({self.chat_id}): {content}", file=sys.stdout)
-
         self.socketio.emit('agent_response', {
             'chat_id': self.chat_id,
             'sender': sender,

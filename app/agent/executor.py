@@ -60,36 +60,41 @@ class Executor:
 
     def _construct_execution_prompt(self, step: str, full_task: str) -> str:
         """Constructs the prompt for the Ollama model to decide on an action."""
-        tools_desc = "\n".join([f'- `{name}`: {tool.get_description()}' for name, tool in self.tools.items()])
+        tools_desc = "\n".join([f'- `{name}`: {tool.description}' for name, tool in self.tools.items()])
         history_str = "\n".join([f"**{item['role'].upper()}**: {item['content']}" for item in self.history])
 
-        prompt = (
-            f"**Objective:** You are an execution agent. Your task is to perform the current step of a plan to achieve a larger goal. "
-            f"You must choose the single best tool to make progress on the current step.\n\n"
-            f"**Overall Goal:** \"{full_task}\"\n"
-            f"**Current Step:** \"{step}\"\n\n"
-            f"**Available Tools:**\n{tools_desc}\n\n"
-            f"**Execution History (for this step):**\n{history_str}\n\n"
-            f"**Instructions:**\n"
-            f"1. First, think step-by-step about what you need to do to accomplish the **Current Step**. This is your thought process.\n"
-            f"2. Based on your thought, choose exactly one tool from the **Available Tools** list.\n"
-            f"3. Provide the tool name and the arguments in a JSON format.\n\n"
-            f"**Output Format:** Your response MUST be a JSON object with three keys: 'thought', 'tool', and 'args'.\n"
-            f"Example:\n"
-            f"```json\n"
-            f"{{\n"
-            f'  "thought": "I need to write the text \\"Hello, World!\\" to a file named hello.py. The `write_file` tool is perfect for this. I will specify the path and the content.",\n'
-            f'  "tool": "write_file",\n'
-            f'  "args": {{\n'
-            f'    "path": "hello.py",\n'
-            f'    "content": "print(\\"Hello, World!\\")"\n'
-            f"  }}\n"
-            f"}}\n"
-            f"```\n\n"
-            f"Now, decide the next action for the **Current Step**.\n"
-            f"**Response:**"
-        )
-        return prompt
+        return f"""**Цель:** Ты — ИИ-исполнитель. Твоя задача — выполнить один шаг из общего плана.
+
+**Общая задача:** \"{full_task}\"
+**Текущий шаг:** \"{step}\"
+
+**Доступные инструменты:**
+{tools_desc}
+
+**История выполнения (для этого шага):**
+{history_str}
+
+**Инструкции:**
+1.  **Думай и отвечай на русском языке.**
+2.  Сначала обдумай, что нужно сделать для выполнения **текущего шага**. Это твой "thought".
+3.  На основе своих мыслей выбери **один** инструмент из списка **доступных инструментов**.
+4.  **ЗАПРЕЩЕНО** придумывать команды или инструменты, которых нет в списке (например, `echo`, `curl`, `open`). Используй только то, что дано.
+5.  Твой ответ ДОЛЖЕН быть ТОЛЬКО в формате JSON с тремя ключами: `thought`, `tool` и `args`.
+
+**Пример формата:**
+```json
+{{
+  "thought": "Мне нужно записать текст 'Hello, World!' в файл hello.py. Для этого идеально подходит инструмент `write_file`. Я укажу путь и содержимое.",
+  "tool": "write_file",
+  "args": {{
+    "path": "hello.py",
+    "content": "print(\\"Hello, World!\\")"
+  }}
+}}
+```
+
+**Теперь прими решение для выполнения текущего шага.**
+"""
 
     def _parse_response(self, response_text: str) -> (str, str, dict):
         """Parses the JSON response from the model to extract thought, tool, and args."""

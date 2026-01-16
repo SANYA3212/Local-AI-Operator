@@ -25,12 +25,18 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadModels() {
         try {
             const response = await fetch('/api/models');
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const models = await response.json();
-            modelSelector.innerHTML = models.map(m => `<option value="${m}">${m}</option>`).join('');
+
+            if (models.length === 0) {
+                modelSelector.innerHTML = `<option value="">No models found</option>`;
+                displayError("Could not fetch AI models. Is Ollama running?");
+            } else {
+                modelSelector.innerHTML = models.map(m => `<option value="${m}">${m}</option>`).join('');
+            }
         } catch (e) {
             console.error("Failed to load models:", e);
-            displayError("Could not fetch AI models. Is Ollama running?");
+            modelSelector.innerHTML = `<option value="">Error loading models</option>`;
+            displayError("An error occurred while fetching AI models.");
         }
     }
 
