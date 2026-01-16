@@ -2,6 +2,7 @@ from app.extensions import socketio
 from app.database.database import SessionLocal
 from app.database.models import Message
 from app.agent.agent_core import AgentCore
+from app.utils import ollama_stream_generate # Make sure this import is present
 import sys
 from flask import request
 
@@ -52,14 +53,17 @@ def handle_stop_agent(data):
     if chat_id in active_agents:
         print(f"--- STOP SIGNAL RECEIVED FOR CHAT {chat_id} ---", file=sys.stdout)
         active_agents[chat_id].stop()
+        socketio.emit('agent_response', {
+            'chat_id': chat_id,
+            'sender': 'agent',
+            'message': 'Agent execution stopped by user.'
+        })
         del active_agents[chat_id]
     sys.stdout.flush()
 
 @socketio.on('user_message')
 def handle_user_message(data):
-    """
-    Handles a regular user message by streaming a response from the LLM.
-    """
+    """Handles a regular user message by streaming a response from the LLM."""
     chat_id = data.get('chat_id')
     message_content = data.get('message', '')
     model = data.get('model')
@@ -67,7 +71,6 @@ def handle_user_message(data):
     if not all([chat_id, message_content, model]):
         return
 
-    # Save user message to DB
     db = SessionLocal()
     db.add(Message(chat_id=chat_id, sender='user', content=message_content))
     db.commit()
@@ -100,14 +103,11 @@ def handle_user_message(data):
             'chat_id': chat_id,
             'sender': 'agent',
             'message': full_response,
-            'message_id': message_id
         })
     finally:
-        # Save the final full response to the database
         db = SessionLocal()
         db.add(Message(chat_id=chat_id, sender='agent', content=full_response))
         db.commit()
         db.close()
-        # Signal the end of the stream
         socketio.emit('stream_end', {'chat_id': chat_id, 'message_id': message_id})
         sys.stdout.flush()

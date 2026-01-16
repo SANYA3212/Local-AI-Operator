@@ -4,7 +4,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- DOM Elements ---
     const chatListEl = document.getElementById('chat-list');
     const modelSelector = document.getElementById('model-selector');
-    const tpsCounter = document.getElementById('tps-counter'); // Kept for now, but might be removed
     const chatWindow = document.getElementById('chat-window');
     const messageInput = document.getElementById('message-input');
     const sendBtn = document.getElementById('send-btn');
@@ -18,7 +17,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- State ---
     let currentChatId = null;
     let isAgentRunning = false;
-    let currentPlanSteps = [];
 
     // =================================================================================
     // Core Functions
@@ -60,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const response = await fetch(`/api/chats/${chatId}/messages`);
         const messages = await response.json();
-        messages.forEach(renderMessage);
+        messages.forEach(msg => renderMessage(msg, false));
 
         const chats = await (await fetch('/api/chats')).json();
         renderChatList(chats);
@@ -81,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const message = messageInput.value.trim();
         if (!message || !currentChatId) return;
 
-        renderMessage({ sender: 'user', content: message });
+        renderMessage({ sender: 'user', content: message }, false);
 
         const isOperatorMode = operatorModeToggle.checked;
 
@@ -107,8 +105,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function stopAgent() {
         if (!isAgentRunning) return;
         socket.emit('stop_agent', { chat_id: currentChatId });
-        setAgentStatus(false);
-        renderMessage({ sender: 'agent', content: "Agent execution stopped by user." });
     }
 
     // =================================================================================
@@ -128,30 +124,55 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function renderMessage(message) {
-        const { sender, content } = message;
+    function renderMessage(message, streaming = false) {
+        const { sender, content, id } = message;
         const bubble = document.createElement('div');
         const isUser = sender === 'user';
 
         bubble.className = `message-bubble max-w-[85%] rounded-2xl p-4 shadow-lg ${isUser ? 'user-bubble ml-auto' : 'ai-bubble'}`;
+        if (id) {
+            bubble.id = id;
+        }
 
-        const parsedContent = marked.parse(content || "Thinking...");
-        bubble.innerHTML = `<div class="prose prose-invert max-w-none text-left">${parsedContent}</div>`;
+        const initialContent = streaming ? '<div class="prose prose-invert max-w-none text-left"></div>' : marked.parse(content || "Thinking...");
+        bubble.innerHTML = `<div class="prose-container">${initialContent}</div>`;
 
         chatWindow.appendChild(bubble);
         chatWindow.scrollTop = chatWindow.scrollHeight;
 
-        bubble.querySelectorAll('pre code').forEach(hljs.highlightElement);
+        if (!streaming) {
+            bubble.querySelectorAll('pre code').forEach(hljs.highlightElement);
+        }
+        return bubble;
+    }
+
+    function appendToken(messageId, token) {
+        let bubble = document.getElementById(messageId);
+        if (!bubble) {
+            bubble = renderMessage({ sender: 'agent', id: messageId }, true);
+        }
+
+        const proseDiv = bubble.querySelector('.prose-container');
+        proseDiv.textContent += token;
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+    }
+
+    function finalizeMessage(messageId) {
+        const bubble = document.getElementById(messageId);
+        if (bubble) {
+            const proseDiv = bubble.querySelector('.prose-container');
+            proseDiv.innerHTML = marked.parse(proseDiv.textContent);
+            bubble.querySelectorAll('pre code').forEach(hljs.highlightElement);
+        }
     }
 
     function displayPlan(planText) {
         const planSteps = planText.replace(/\*\*Generated Plan:\*\*\n/i, "").split('\n').filter(s => s.trim().length > 0);
-        currentPlanSteps = planSteps.map(step => step.replace(/^\d+\.\s/, ''));
 
         planList.innerHTML = '';
-        currentPlanSteps.forEach((step, index) => {
+        planSteps.forEach((step, index) => {
             const li = document.createElement('li');
-            li.textContent = step;
+            li.textContent = step.replace(/^\d+\.\s/, '');
             li.dataset.stepIndex = index;
             planList.appendChild(li);
         });
@@ -173,11 +194,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function resetPlanView() {
         planContainer.classList.add('hidden');
         planList.innerHTML = '';
-        currentPlanSteps = [];
     }
 
     function setAgentStatus(isRunning) {
         isAgentRunning = isRunning;
+        operatorModeToggle.disabled = isRunning;
         stopAgentBtn.classList.toggle('hidden', !isRunning);
         messageInput.disabled = isRunning;
         sendBtn.disabled = isRunning;
@@ -216,22 +237,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 displayPlan(data.message);
                 break;
             case 'agent':
-                renderMessage({ sender: 'agent', content: data.message, id: data.message_id });
+                renderMessage({ sender: 'agent', content: data.message, id: data.message_id }, false);
                 if (data.message.includes('--- Starting Step')) {
                     updateActiveStep(data.message);
                 }
-                if (data.message.includes('Task finished') || data.message.includes('Task aborted')) {
+                if (data.message.includes('Task finished') || data.message.includes('Task aborted') || data.message.includes('stopped by user')) {
                     setAgentStatus(false);
                 }
                 break;
             case 'thought':
-                renderMessage({ sender: 'agent', content: `**Thought:** ${data.message}` });
+                renderMessage({ sender: 'agent', content: `**Thought:** ${data.message}` }, false);
                 break;
             case 'observation':
-                renderMessage({ sender: 'agent', content: `**Observation:**\n\`\`\`json\n${data.message}\n\`\`\`` });
+                renderMessage({ sender: 'agent', content: `**Observation:**\n\`\`\`json\n${data.message}\n\`\`\`` }, false);
                 break;
-            default:
-                renderMessage({ sender: 'agent', content: data.message });
         }
     });
 
