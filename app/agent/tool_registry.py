@@ -4,7 +4,7 @@ from app.agent.tools.file_system import (
     DeleteFileTool, CreateDirectoryTool, DeleteDirectoryTool
 )
 from app.agent.tools.python_interpreter import PythonInterpreterTool
-from app.agent.tools.shell import ShellCommandTool
+from app.agent.tools.shell import ShellCommandTool, GetOSInfoTool
 from app.agent.tools.gui_control import MouseClickTool, TypeTextTool, HotkeyTool
 from app.agent.tools.windows_control import GetActiveWindowTool, MaximizeWindowTool
 from app.agent.tools.vision import ScreenshotTool
