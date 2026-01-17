@@ -6,3 +6,5 @@ SQLAlchemy
 PyAutoGUI
 PyGetWindow
 mss
+Pillow
+pytesseract

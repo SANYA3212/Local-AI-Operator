@@ -89,7 +89,6 @@ class AgentCore(threading.Thread):
 
             self.log_and_emit("agent", f"--- Выполнение шага {i+1}/{len(plan)} ---")
             executor.execute_step(step, self.task)
-            executor.history = []
 
         if not self.stop_event.is_set():
             self.log_and_emit("agent", "Все шаги выполнены. Задача завершена.")

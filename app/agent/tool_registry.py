@@ -7,7 +7,8 @@ from app.agent.tools.python_interpreter import PythonInterpreterTool
 from app.agent.tools.shell import ShellCommandTool, GetOSInfoTool
 from app.agent.tools.gui_control import MouseClickTool, TypeTextTool, HotkeyTool
 from app.agent.tools.windows_control import GetActiveWindowTool, MaximizeWindowTool
-from app.agent.tools.vision import ScreenshotTool
+from app.agent.tools.vision import ScreenshotTool, AnalyzeScreenOCRTool
+from app.agent.tools.wait import WaitTool
 
 # The registry is a simple dictionary that maps tool names to their class instances.
 # The Executor will use this registry to find and execute the appropriate tool.
@@ -38,6 +39,10 @@ TOOL_REGISTRY = {
 
     # Vision
     "take_screenshot": ScreenshotTool(),
+    "analyze_screen_ocr": AnalyzeScreenOCRTool(),
+
+    # Wait
+    "wait": WaitTool(),
 }
 
 def get_tool(name: str):
