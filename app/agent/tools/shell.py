@@ -11,6 +11,12 @@ DANGEROUS_COMMANDS = {
     "darwin": ["rm", "sudo", "mv"]
 }
 
+class GetOSInfoTool(BaseTool):
+    """Returns the name of the current operating system (e.g., 'Windows', 'Linux')."""
+
+    def execute(self):
+        return self._safe_execute(lambda: platform.system())
+
 class ShellCommandTool(BaseTool):
     """Executes a command in the system's shell securely. Dangerous commands are blocked."""
 

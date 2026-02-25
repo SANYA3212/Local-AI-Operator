@@ -15,29 +15,40 @@
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.5); border-radius: 10px; }
-        .chat-window { scroll-behavior: smooth; max-height: calc(100vh - 240px); }
+        .chat-window { scroll-behavior: smooth; }
         .hljs { background: #1e293b !important; border-radius: 12px !important; padding: 1.25rem !important; }
+        #plan-list li.active { color: #818cf8; font-weight: 600; }
+        .switch { position: relative; display: inline-block; width: 60px; height: 34px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #4b5563; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #4f46e5; }
+        input:checked + .slider:before { transform: translateX(26px); }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-100">
-    <div class="flex min-h-screen">
+    <div class="flex h-screen">
         <!-- Sidebar -->
         <div class="sidebar w-80 flex flex-col p-4 border-r border-gray-800/50">
             <div class="flex items-center justify-between mb-6">
                 <h2 class="text-2xl font-bold">Agent AI</h2>
                 <div>
-                    <button id="clear-chat-btn" title="Clear Chat">🗑️</button>
-                    <button id="new-chat-btn" title="New Chat">+</button>
+                    <button id="clear-chat-btn" title="Clear Chat" class="p-1 hover:bg-gray-700 rounded-full">🗑️</button>
+                    <button id="new-chat-btn" title="New Chat" class="p-1 hover:bg-gray-700 rounded-full font-bold">+</button>
                 </div>
             </div>
             <div id="chat-list" class="flex-1 overflow-y-auto pr-2 space-y-2">
                 <!-- Chat list will be dynamically populated here -->
             </div>
             <div class="mt-auto pt-4 border-t border-gray-800/50">
-                <select id="model-selector" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2 text-sm"></select>
-                <div class="flex justify-between items-center text-xs text-gray-400 mt-2">
-                    <span>TPS: <span id="tps-counter">0.0</span></span>
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-lg font-semibold">Operator Mode</span>
+                    <label class="switch">
+                        <input type="checkbox" id="operator-mode-toggle">
+                        <span class="slider"></span>
+                    </label>
                 </div>
+                <select id="model-selector" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-2 text-sm"></select>
             </div>
         </div>
 
@@ -46,15 +57,19 @@
             <div id="chat-window" class="chat-window flex-1 overflow-y-auto p-6 space-y-6">
                 <!-- Messages will be dynamically populated here -->
             </div>
+
+            <div id="plan-container" class="p-4 bg-gray-800/50 border-t border-b border-gray-700/50 hidden">
+                <h3 class="text-lg font-semibold mb-2">Execution Plan:</h3>
+                <ul id="plan-list" class="list-disc list-inside space-y-1"></ul>
+            </div>
+
             <div class="p-4 bg-gray-900/50 border-t border-gray-800/50">
-                <div id="action-buttons-container" class="flex justify-center gap-3 mb-3">
-                    <button data-action="write_file" class="action-btn px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-xl">Write File</button>
-                    <button data-action="shell_command" class="action-btn px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-xl">Run Command</button>
-                    <button data-action="take_screenshot" class="action-btn px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-xl">Take Screenshot</button>
+                <div class="flex justify-center gap-3 mb-3">
+                    <button id="stop-agent-btn" class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-xl hidden">Stop Agent</button>
                 </div>
                 <div class="flex items-end space-x-3">
-                    <textarea id="message-input" placeholder="Type or drop an image..." class="flex-1 bg-gray-800/50 border rounded-xl p-4 resize-none"></textarea>
-                    <button id="send-btn" class="bg-primary text-white p-3 rounded-xl">Send</button>
+                    <textarea id="message-input" placeholder="Ask a question or give a task..." class="flex-1 bg-gray-800/50 border rounded-xl p-4 resize-none"></textarea>
+                    <button id="send-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-xl">Send</button>
                 </div>
             </div>
         </div>

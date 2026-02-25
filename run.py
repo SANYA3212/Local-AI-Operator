@@ -1,3 +1,11 @@
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+import sys
+import os
+# Ensure the project root is in the Python path
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+
 from flask import Flask, send_from_directory
 from app.database.database import engine, Base
 from app.api.routes import api as api_blueprint

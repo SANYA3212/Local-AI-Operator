@@ -9,11 +9,13 @@ if IS_WINDOWS:
 
 class _UnavailableTool(BaseTool):
     """A placeholder for a tool that is not available on this OS."""
-    description = "This tool is only available on Windows."
+    _description = "This tool is only available on Windows."
+    @property
+    def description(self):
+        return self._description
+
     def execute(self, *args, **kwargs):
-        return self._safe_execute(lambda: (_ for _ in ()).throw(Exception(self.description)))
-    def get_description(self):
-        return self.description
+        return self._safe_execute(lambda: (_ for _ in ()).throw(Exception(self._description)))
 
 if IS_WINDOWS:
     class MouseClickTool(BaseTool):
@@ -27,8 +29,11 @@ if IS_WINDOWS:
             return self._safe_execute(pyautogui.typewrite, text, interval=0.05)
 
     class HotkeyTool(BaseTool):
-        """Presses a combination of hotkeys (e.g., 'ctrl', 'c')."""
-        def execute(self, *keys):
+        """
+        Presses a combination of hotkeys.
+        Example: `hotkey(keys=['ctrl', 'c'])` to press Ctrl+C.
+        """
+        def execute(self, keys: list):
             return self._safe_execute(pyautogui.hotkey, *keys)
 else:
     class MouseClickTool(_UnavailableTool):
